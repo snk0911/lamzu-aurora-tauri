@@ -1,0 +1,23 @@
+# udev rule for Lamzu Atlantis: allows hidraw access without root.
+#
+# The IDs come from the lamzu-cfg source (src/device.rs):
+#   VENDOR_ID = 0x3554
+#   0xf50f = Atlantis Wired
+#   0xf50d = Atlantis Wireless (1K)
+#   0xf510 = Atlantis Wireless (4K)
+#
+# Different model? Find the IDs with `lsusb` and add them below.
+#
+# Installation:
+#   sudo cp 99-lamzu.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#   Unplug and replug the mouse.
+#
+# TAG+="uaccess": the logged-in desktop user gets access automatically.
+
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f50f", TAG+="uaccess"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f50d", TAG+="uaccess"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f510", TAG+="uaccess"
+
+# Fallback: all devices of this vendor (commented out).
+# KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", TAG+="uaccess"

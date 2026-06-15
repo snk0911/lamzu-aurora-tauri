@@ -1,0 +1,47 @@
+[package]
+name = "lamzu-aurora-tauri"
+version = "0.1.0"
+description = "A native, cross-platform configuration GUI for Lamzu mice (Tauri + React)"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "lamzu_aurora_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ---------------------------------------------------------------------------
+# lamzu-cfg directly as a library (the crate is internally named "lamzu").
+# It exports a clean `Mouse` trait API and uses hidapi itself, so it runs
+# cross-platform wherever hidapi runs.
+#
+# IMPORTANT: lamzu-cfg identifies devices via the HID report descriptor
+# (get_report_descriptor). This works with the hidraw backend (Linux,
+# Windows, macOS) - NOT with the libusb backend. hidapi's default backend
+# is hidraw, so that's fine.
+#
+# Pulled in via Git here. For reproducible builds, prefer pinning a
+# specific rev/tag.
+# ---------------------------------------------------------------------------
+lamzu = { git = "https://github.com/LeadSun/lamzu-cfg", optional = true }
+
+[features]
+# "real-device" on  -> real lamzu/hidapi
+# "real-device" off -> in-memory mock (UI development without hardware)
+default = ["real-device"]
+real-device = ["dep:lamzu"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

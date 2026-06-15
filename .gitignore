@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+# Build-Ausgaben
+dist/
+src-tauri/target/
+src-tauri/gen/
+# TypeScript
+*.tsbuildinfo
+# Diverses
+.DS_Store
+*.log
