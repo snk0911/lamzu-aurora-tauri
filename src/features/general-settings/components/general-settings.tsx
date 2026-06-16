@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -16,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, Plus, Minus } from "lucide-react";
-import { POLL_RATES, PEAK_TIME_PRESETS, TOGGLES, MAX_STAGES } from "@/lib/constants";
-import { rgb, fmtSeconds } from "@/lib/profile-utils";
+import { DpiStages } from "./dpi-stages";
+import { POLL_RATES, PEAK_TIME_PRESETS, TOGGLES } from "@/lib/constants";
+import { fmtSeconds } from "@/lib/profile-utils";
 
 export function GeneralSettings({
   profile,
@@ -32,6 +31,8 @@ export function GeneralSettings({
   activateMore,
   activateLess,
   setCurrentStage,
+  lockedStages,
+  toggleDpiLock,
   makeActive,
 }: {
   profile: Profile;
@@ -45,10 +46,12 @@ export function GeneralSettings({
   activateMore: () => void;
   activateLess: () => void;
   setCurrentStage: (stageIndex: number) => void;
+  lockedStages: Set<number>;
+  toggleDpiLock: (stageIndex: number) => void;
   makeActive: (idx: number) => void;
 }) {
   return (
-    <>
+    <div className="flex h-full flex-col gap-5">
               <div className="grid grid-cols-2 gap-5">
                 {/* Performance */}
                 <Card className="h-full">
@@ -243,156 +246,25 @@ export function GeneralSettings({
                     </div>
                   </CardContent>
                 </Card>
+              </div>
 
-                {/* DPI stages — editable, switchable, add/remove, decoupled X/Y */}
-                <Card className="col-span-full">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
-                        DPI Stages
-                      </CardTitle>
-                      {/* Active-stage-count stepper (1–MAX_STAGES). Doesn't add
-                          or delete banks — just activates/greys them out. */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={activateLess}
-                          disabled={activeCount <= 1}
-                          title="Activate one fewer stage"
-                          className="flex size-6 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                        >
-                          <Minus className="size-3.5" />
-                        </button>
-                        <span className="tabular w-5 text-center text-sm">
-                          {activeCount}
-                        </span>
-                        <button
-                          onClick={activateMore}
-                          disabled={activeCount >= MAX_STAGES}
-                          title="Activate one more stage"
-                          className="flex size-6 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                        >
-                          <Plus className="size-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1.5">
-                    {profile.resolutions.map((res, i) => {
-                      const color = profile.resolution_colors[i];
-                      const isActive = i < activeCount;
-                      const isCurrent =
-                        isActive && i === profile.current_resolution_index;
-                      return (
-                        <div
-                          key={i}
-                          className={`flex items-center gap-3 rounded-md border px-3 py-1.5 transition-colors ${
-                            isCurrent
-                              ? "border-primary/50 bg-primary/10"
-                              : "border-transparent hover:bg-accent/40"
-                          } ${isActive ? "" : "opacity-40"}`}
-                        >
-                          {/* Select active stage (only for active banks) */}
-                          <button
-                            onClick={() => setCurrentStage(i)}
-                            disabled={!isActive}
-                            title={
-                              isActive
-                                ? "Set as active DPI stage"
-                                : "Inactive stage"
-                            }
-                            className={`flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                              isCurrent
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-muted-foreground/40 text-transparent hover:border-primary"
-                            } disabled:pointer-events-none`}
-                          >
-                            <Check className="size-3" />
-                          </button>
-
-                          {/* Color swatch of the stage */}
-                          <span
-                            className="size-4 shrink-0 rounded-sm ring-1 ring-white/15"
-                            style={{
-                              background: color ? rgb(color) : "#555",
-                            }}
-                          />
-
-                          <span className="w-16 shrink-0 text-sm text-muted-foreground">
-                            Stage {i + 1}
-                          </span>
-
-                          {/* Decoupled X / Y inputs (disabled when inactive) */}
-                          <div className="ml-auto flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              X
-                            </span>
-                            <Input
-                              type="number"
-                              min={50}
-                              max={26000}
-                              step={50}
-                              value={res.x}
-                              disabled={!isActive}
-                              onChange={(e) =>
-                                setDpiAxis(
-                                  i,
-                                  "x",
-                                  Math.max(
-                                    50,
-                                    Math.min(26000, Number(e.target.value)),
-                                  ),
-                                )
-                              }
-                              onBlur={commit}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") e.currentTarget.blur();
-                              }}
-                              className="tabular h-8 w-24 text-right"
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              Y
-                            </span>
-                            <Input
-                              type="number"
-                              min={50}
-                              max={26000}
-                              step={50}
-                              value={res.y}
-                              disabled={!isActive}
-                              onChange={(e) =>
-                                setDpiAxis(
-                                  i,
-                                  "y",
-                                  Math.max(
-                                    50,
-                                    Math.min(26000, Number(e.target.value)),
-                                  ),
-                                )
-                              }
-                              onBlur={commit}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") e.currentTarget.blur();
-                              }}
-                              className="tabular h-8 w-24 text-right"
-                            />
-                            <span className="w-8 text-sm text-muted-foreground">
-                              DPI
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <p className="pt-1 text-xs text-muted-foreground">
-                      The dot on the left selects the active stage. X and Y are
-                      independent (50–26000). Use + / − to activate or deactivate
-                      stages (1–5); inactive stages are greyed out.
-                    </p>
-                  </CardContent>
-                </Card>
+              {/* DPI stages — takes all remaining height */}
+              <div className="grid min-h-0 flex-1 grid-cols-1">
+                <DpiStages
+                  profile={profile}
+                  activeCount={activeCount}
+                  setDpiAxis={setDpiAxis}
+                  setCurrentStage={setCurrentStage}
+                  activateMore={activateMore}
+                  activateLess={activateLess}
+                  lockedStages={lockedStages}
+                  toggleDpiLock={toggleDpiLock}
+                  commit={commit}
+                />
               </div>
 
               {selected !== active && (
-                <div className="mt-7 flex">
+                <div className="flex">
                   <Button
                     variant="outline"
                     onClick={() => makeActive(selected)}
@@ -401,6 +273,6 @@ export function GeneralSettings({
                   </Button>
                 </div>
               )}
-    </>
+    </div>
   );
 }

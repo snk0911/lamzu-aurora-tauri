@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MouseDiagram } from "@/components/MouseDiagram";
+import { MouseDiagram } from "./mouse-diagram";
 import {
   MOUSE_BUTTONS,
   ASSIGNABLE_ACTIONS,
@@ -21,7 +21,7 @@ export function CustomizationTab({
   setButtonAction: (buttonKey: string, value: unknown) => void;
 }) {
   return (
-    <div className="space-y-5">
+    <div className="flex h-full flex-col gap-5">
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -29,7 +29,7 @@ export function CustomizationTab({
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-3">
-          <div className="mx-auto max-w-2xl">
+          <div className="mx-auto max-w-3xl">
             <MouseDiagram
               actions={Object.fromEntries(
                 MOUSE_BUTTONS.map(([key]) => {
@@ -52,15 +52,15 @@ export function CustomizationTab({
         </CardContent>
       </Card>
 
-      {/* Macros */}
-      <Card>
+      {/* Macros — takes all remaining height */}
+      <Card className="flex min-h-0 flex-1 flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
             Macros
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-8 text-center">
+        <CardContent className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
+          <div className="flex w-full flex-col items-center justify-center rounded-md border border-dashed py-8 text-center">
             <p className="text-sm text-muted-foreground">No macros yet</p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground">
               Macro recording and editing isn't available yet. Button clicks can

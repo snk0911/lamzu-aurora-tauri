@@ -22,6 +22,22 @@ export function useDevice() {
   const [activeCount, setActiveCount] = useState(MAX_STAGES);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which DPI stages have X/Y locked together. Each stage is independent: a
+  // stage's index is in the set when its X and Y move together (the default).
+  // Stages 0..MAX_STAGES-1 all start locked.
+  const [lockedStages, setLockedStages] = useState<Set<number>>(
+    () => new Set(Array.from({ length: MAX_STAGES }, (_, i) => i)),
+  );
+
+  // Toggle the lock for a single stage, leaving the others untouched.
+  const toggleDpiLock = (stageIndex: number) => {
+    setLockedStages((prev) => {
+      const next = new Set(prev);
+      if (next.has(stageIndex)) next.delete(stageIndex);
+      else next.add(stageIndex);
+      return next;
+    });
+  };
 
   // While an HID write is in progress, status polling pauses so the device
   // accesses don't collide. A ref (not state) is used because the interval
@@ -345,12 +361,16 @@ export function useDevice() {
     void saveProfile(next);
   };
 
-  // Set a stage's X or Y resolution independently (decoupled).
+  // Set a stage's X or Y resolution. When that stage's X/Y are locked together
+  // (the default), both axes get the same value; when unlocked, only the edited
+  // axis changes. Each stage's lock is independent.
   const setDpiAxis = (stageIndex: number, axis: "x" | "y", value: number) => {
     if (!profile) return;
-    const resolutions = profile.resolutions.map((r, i) =>
-      i === stageIndex ? { ...r, [axis]: value } : r,
-    );
+    const locked = lockedStages.has(stageIndex);
+    const resolutions = profile.resolutions.map((r, i) => {
+      if (i !== stageIndex) return r;
+      return locked ? { x: value, y: value } : { ...r, [axis]: value };
+    });
     patch({ resolutions });
   };
 
@@ -437,6 +457,8 @@ export function useDevice() {
     error,
     charging,
     battery,
+    lockedStages,
+    toggleDpiLock,
     // handlers
     patchAndSave,
     commit,

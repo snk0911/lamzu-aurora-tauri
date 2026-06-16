@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/Logo";
-import { WindowControls } from "@/components/WindowControls";
-import { GeneralSettings } from "@/components/GeneralSettings";
-import { CustomizationTab } from "@/components/CustomizationTab";
+import { Logo } from "@/components/logo";
+import { WindowControls } from "@/components/window-controls";
+import { GeneralSettings } from "@/features/general-settings";
+import { CustomizationTab } from "@/features/customization";
 import { RotateCcw } from "lucide-react";
-import { Stat } from "@/components/Stat";
-import { useDevice } from "@/hooks/useDevice";
+import { Stat } from "@/components/stat";
+import { useDevice } from "@/hooks/use-device";
 
 export default function App() {
   // All device communication + profile editing lives in the hook.
@@ -23,6 +23,8 @@ export default function App() {
     error,
     charging,
     battery,
+    lockedStages,
+    toggleDpiLock,
     patchAndSave,
     commit,
     setButtonAction,
@@ -132,7 +134,7 @@ export default function App() {
         </aside>
 
         {/* Hauptbereich */}
-        <main className="min-h-0 flex-1 overflow-hidden p-8">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-8">
           {/* Tab bar (the sidebar already shows which profile is active) */}
           <div className="mb-6 flex items-center justify-between border-b">
             <div className="flex gap-1">
@@ -191,6 +193,7 @@ export default function App() {
             </div>
           )}
 
+          <div className="min-h-0 flex-1 overflow-hidden">
           {profile && tab === "general" && (
             <GeneralSettings
               profile={profile}
@@ -204,6 +207,8 @@ export default function App() {
               activateMore={activateMore}
               activateLess={activateLess}
               setCurrentStage={setCurrentStage}
+              lockedStages={lockedStages}
+              toggleDpiLock={toggleDpiLock}
               makeActive={makeActive}
             />
           )}
@@ -214,6 +219,7 @@ export default function App() {
               setButtonAction={setButtonAction}
             />
           )}
+          </div>
         </main>
       </div>
     </div>
