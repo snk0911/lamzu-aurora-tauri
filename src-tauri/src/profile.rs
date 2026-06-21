@@ -157,34 +157,30 @@ mod convert {
         /// Converts the frontend profile back into a lamzu::Profile for the
         /// write. All fields are set as Some(..) -> full write.
         ///
-        /// The button map is deserialized from `self.button_map` (the same JSON
-        /// shape lamzu produces on read) straight back into
-        /// HashMap<Button, Action> via serde. lamzu then handles the raw byte
-        /// encoding + checksums itself, so we don't touch bytes here.
-        ///
-        /// Macros are intentionally NOT written (left empty): button-click
-        /// editing is supported, macro editing is not yet. If the map contains
-        /// a Macro/Combo action it's dropped during conversion (see below) so we
-        /// never reference an undefined macro.
-        pub fn to_lamzu(&self) -> LProfile {
-            use lamzu::profile::{Action, Button};
+        /// Both the button map and the macros are deserialized from their JSON
+        /// (the same shape lamzu produces on read) straight back into lamzu's
+        /// types via serde. lamzu then handles the raw byte encoding +
+        /// checksums itself, so we don't touch bytes here.
+        pub fn to_lamzu(&self) -> Result<LProfile, String> {
+            use lamzu::profile::{Action, Button, Macro};
             use std::collections::HashMap;
 
             // Deserialize the frontend button map back into lamzu's types.
-            // Defensive: on any parse failure, fall back to an empty map rather
-            // than writing something malformed to the mouse.
-            let mut button_map: HashMap<Button, Action> =
+            // A parse failure here is a real error (don't silently write an
+            // empty map, which would wipe the user's mappings on the mouse).
+            let button_map: HashMap<Button, Action> =
                 serde_json::from_value(self.button_map.clone())
-                    .unwrap_or_default();
+                    .map_err(|e| format!("Invalid button map: {e}"))?;
 
-            // Macro editing isn't supported yet. Drop any Macro/Combo actions so
-            // we never write a button pointing at a macro we didn't define
-            // (which lamzu would reject). Plain clicks/DPI/etc. are kept.
-            button_map.retain(|_, action| {
-                !matches!(action, Action::Macro { .. } | Action::Combo { .. })
-            });
+            // Deserialize macros the same way. If this fails the macro JSON
+            // doesn't match lamzu's expected shape (e.g. an unsupported key
+            // code), so surface it instead of silently writing no macros —
+            // that was the cause of "macros vanish after restart".
+            let macros: HashMap<String, Macro> =
+                serde_json::from_value(self.macros.clone())
+                    .map_err(|e| format!("Invalid macro data: {e}"))?;
 
-            LProfile {
+            Ok(LProfile {
                 poll_rate: Some(self.poll_rate),
                 current_resolution_index: Some(self.current_resolution_index),
                 lift_off_distance: Some(self.lift_off_distance),
@@ -210,9 +206,8 @@ mod convert {
                     })
                     .collect(),
                 button_map,
-                // Macros not edited here — leave empty.
-                macros: Default::default(),
-            }
+                macros,
+            })
         }
     }
 }

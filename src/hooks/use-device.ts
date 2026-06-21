@@ -22,6 +22,11 @@ export function useDevice() {
   const [activeCount, setActiveCount] = useState(MAX_STAGES);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Diagnostic: result of reading a just-saved macro back from the mouse.
+  // null = idle, "checking" = verifying, "ok" = found, "missing" = not found.
+  const [macroVerify, setMacroVerify] = useState<
+    null | "checking" | "ok" | "missing"
+  >(null);
   // Which DPI stages have X/Y locked together. Each stage is independent: a
   // stage's index is in the set when its X and Y move together (the default).
   // Stages 0..MAX_STAGES-1 all start locked.
@@ -340,6 +345,69 @@ export function useDevice() {
     void saveProfile(next);
   };
 
+  // Create or update a macro by name, then write to the mouse. Macros live in
+  // profile.macros as a map of name -> { mode, events }, matching lamzu's
+  // Save a macro for a specific button AND point that button's action at it,
+  // in a single write. Combining them matters: lamzu only writes the macro
+  // block when the button map is non-empty, and writing both together means
+  // the macro always lands with a button referencing it (so it survives a
+  // restart). The macro is named after the button key.
+  const saveMacroForButton = (buttonKey: string, macroDef: unknown) => {
+    if (!profile) return;
+    const macros = {
+      ...((profile.macros ?? {}) as Record<string, unknown>),
+    };
+    macros[buttonKey] = macroDef;
+    const bm = { ...((profile.button_map ?? {}) as Record<string, unknown>) };
+    bm[buttonKey] = { Macro: { name: buttonKey } };
+    const next = { ...profile, macros, button_map: bm };
+    setProfile(next);
+    // Write, then read the profile straight back from the mouse to verify the
+    // macro actually persisted. This is the key diagnostic for "macros vanish
+    // after restart": if the mouse doesn't return the macro right after a
+    // successful write, the write/flash isn't sticking on the hardware.
+    void (async () => {
+      await saveProfile(next);
+      setMacroVerify("checking");
+      try {
+        // Small delay so the mouse can commit the flash before we read back.
+        await new Promise((r) => setTimeout(r, 250));
+        const fresh = await api.getProfile(selected);
+        const freshMacros = (fresh.macros ?? {}) as Record<string, unknown>;
+        setMacroVerify(freshMacros[buttonKey] ? "ok" : "missing");
+      } catch {
+        setMacroVerify("missing");
+      }
+    })();
+  };
+
+  // Delete a macro, and also clear any button that pointed at it (so we never
+  // leave a button referencing a macro that no longer exists). Writes once.
+  const deleteMacro = (name: string) => {
+    if (!profile) return;
+    const macros = {
+      ...((profile.macros ?? {}) as Record<string, unknown>),
+    };
+    delete macros[name];
+    // Reset any button that referenced this macro back to its factory default
+    // action (rather than removing the entry). Keeping the map non-empty also
+    // ensures lamzu actually writes the button/macro block.
+    const bm = { ...((profile.button_map ?? {}) as Record<string, unknown>) };
+    for (const [btn, action] of Object.entries(bm)) {
+      if (
+        action &&
+        typeof action === "object" &&
+        "Macro" in (action as Record<string, unknown>) &&
+        (action as { Macro?: { name?: string } }).Macro?.name === name
+      ) {
+        bm[btn] = DEFAULT_BUTTON_MAP[btn] ?? "Disabled";
+      }
+    }
+    const next = { ...profile, macros, button_map: bm };
+    setProfile(next);
+    void saveProfile(next);
+  };
+
   // Reset general settings (everything except the button map / DPI values) to
   // sensible factory defaults and write immediately. DPI stage values are left
   // untouched — those are the user's chosen sensitivities, not a "setting".
@@ -464,6 +532,10 @@ export function useDevice() {
     commit,
     setButtonAction,
     resetButtonMap,
+    saveMacroForButton,
+    deleteMacro,
+    macroVerify,
+    resetMacroVerify: () => setMacroVerify(null),
     resetGeneralSettings,
     setDpiAxis,
     activateMore,

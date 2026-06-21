@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Lamzu Aurora Ultra",
+        "title": "Lamzu Aurora Tauri",
         "width": 1240,
         "height": 900,
         "resizable": false,

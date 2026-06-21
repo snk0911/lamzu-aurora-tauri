@@ -8,6 +8,7 @@
 // overlay tracks the label regardless of render size.
 
 import { useState } from "react";
+import { MacroRecorder } from "./macro-recorder";
 
 type Btn = {
   key: string;
@@ -24,11 +25,11 @@ const VB_W = 965;
 const VB_H = 380;
 
 const BUTTONS: Btn[] = [
-  { key: "Left", label: "Left Click", tx: 40, ty: 117, anchor: "start", points: "118,113 185,113 185,107 418,107", dotX: 418, dotY: 107 },
-  { key: "Middle", label: "Wheel Click", tx: 40, ty: 164, anchor: "start", points: "130,160 200,160 200,150 455,150", dotX: 455, dotY: 150 },
+  { key: "Left", label: "Left Click", tx: 40, ty: 107, anchor: "start", points: "118,107 418,107", dotX: 418, dotY: 107 },
+  { key: "Middle", label: "Wheel Click", tx: 40, ty: 150, anchor: "start", points: "130,150 455,150", dotX: 455, dotY: 150 },
   { key: "Forward", label: "Forward", tx: 40, ty: 211, anchor: "start", points: "108,207 215,207 215,174 375,174", dotX: 375, dotY: 174 },
   { key: "Back", label: "Backward", tx: 40, ty: 258, anchor: "start", points: "122,254 230,254 230,200 375,200", dotX: 375, dotY: 200 },
-  { key: "Right", label: "Right Click", tx: 925, ty: 117, anchor: "end", points: "847,113 560,113 560,107 492,107", dotX: 492, dotY: 107 },
+  { key: "Right", label: "Right Click", tx: 925, ty: 107, anchor: "end", points: "847,107 492,107", dotX: 492, dotY: 107 },
   { key: "Bottom", label: "DPI Button", tx: 925, ty: 246, anchor: "end", points: "847,250 600,250 600,201 558,201", dotX: 555, dotY: 201 },
 ];
 
@@ -39,6 +40,13 @@ export function MouseDiagram({
   assignable,
   onAssign,
   actionValueKey,
+  macros,
+  onSaveMacro,
+  onDeleteMacro,
+  macroVerify,
+  resetMacroVerify,
+  macroFor,
+  setMacroFor,
 }: {
   // button key -> formatted action text (for display)
   actions: Record<string, string>;
@@ -48,6 +56,17 @@ export function MouseDiagram({
   // called when the user picks a new action for a button
   onAssign: (buttonKey: string, value: unknown) => void;
   actionValueKey: (v: unknown) => string;
+  // current macros per button key (button key -> Macro), for the recorder
+  macros: Record<string, import("@/lib/macros").Macro>;
+  // save/delete a macro for a given button key
+  onSaveMacro: (buttonKey: string, macro: import("@/lib/macros").Macro) => void;
+  onDeleteMacro: (buttonKey: string) => void;
+  // diagnostic: whether a just-saved macro was found on the mouse on read-back
+  macroVerify: null | "checking" | "ok" | "missing";
+  resetMacroVerify: () => void;
+  // Controlled recorder: which button's macro panel is open (null = none).
+  macroFor: string | null;
+  setMacroFor: (key: string | null) => void;
 }) {
   // Which button's dropdown is open (null = none).
   const [open, setOpen] = useState<string | null>(null);
@@ -176,6 +195,17 @@ export function MouseDiagram({
                   </button>
                 );
               })}
+              {/* Divider + Macro entry: opens the per-button recorder */}
+              <div className="my-1 border-t" />
+              <button
+                className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-left text-sm text-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  setOpen(null);
+                  setMacroFor(b.key);
+                }}
+              >
+                {macros[b.key] ? "Macro… (edit)" : "Macro…"}
+              </button>
             </div>
           </div>
         );
@@ -188,6 +218,36 @@ export function MouseDiagram({
           onClick={() => setOpen(null)}
           aria-hidden
         />
+      )}
+
+      {/* Macro recorder panel for the selected button */}
+      {macroFor && (
+        <>
+          <div
+            className="fixed inset-0 z-20 bg-black/40"
+            onClick={() => setMacroFor(null)}
+            aria-hidden
+          />
+          <MacroRecorder
+            buttonLabel={
+              BUTTONS.find((x) => x.key === macroFor)?.label ?? macroFor
+            }
+            existing={macros[macroFor] ?? null}
+            verify={macroVerify}
+            onSave={(macro) => {
+              onSaveMacro(macroFor, macro);
+            }}
+            onDelete={() => {
+              onDeleteMacro(macroFor);
+              setMacroFor(null);
+              resetMacroVerify();
+            }}
+            onClose={() => {
+              setMacroFor(null);
+              resetMacroVerify();
+            }}
+          />
+        </>
       )}
     </div>
   );

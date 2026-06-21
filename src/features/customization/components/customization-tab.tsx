@@ -1,11 +1,8 @@
+import { useState } from "react";
 import type { Profile } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { MouseDiagram } from "./mouse-diagram";
+import type { Macro } from "@/lib/macros";
 import {
   MOUSE_BUTTONS,
   ASSIGNABLE_ACTIONS,
@@ -16,57 +13,70 @@ import {
 export function CustomizationTab({
   profile,
   setButtonAction,
+  saveMacroForButton,
+  deleteMacro,
+  macroVerify,
+  resetMacroVerify,
 }: {
   profile: Profile;
   setButtonAction: (buttonKey: string, value: unknown) => void;
+  // Saves a macro for a button AND points the button at it, in one write.
+  saveMacroForButton: (buttonKey: string, macro: Macro) => void;
+  deleteMacro: (name: string) => void;
+  macroVerify: null | "checking" | "ok" | "missing";
+  resetMacroVerify: () => void;
 }) {
+  const buttonMap = (profile.button_map ?? {}) as Record<string, unknown>;
+  const allMacros = (profile.macros ?? {}) as Record<string, Macro>;
+
+  // Which button's macro recorder panel is open (null = none). Lifted here so
+  // both the mouse diagram's "Macro…" entry and the list below can open it.
+  const [macroFor, setMacroFor] = useState<string | null>(null);
+
+  // Build a button-key -> Macro map. A macro belongs to a button when that
+  // button's action is Macro { name } and the macro exists.
+  const macrosByButton: Record<string, Macro> = {};
+  for (const [btnKey] of MOUSE_BUTTONS) {
+    const action = buttonMap[btnKey] as
+      | { Macro?: { name?: string } }
+      | undefined;
+    const name = action?.Macro?.name;
+    if (name && allMacros[name]) macrosByButton[btnKey] = allMacros[name];
+  }
+
   return (
     <div className="flex h-full flex-col gap-5">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
-            Button Mapping
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-3">
-          <div className="mx-auto max-w-3xl">
+      <Card className="flex min-h-0 flex-1 flex-col">
+        <CardContent className="flex min-h-0 flex-1 flex-col justify-center py-6">
+          <div className="mx-auto w-full max-w-4xl">
             <MouseDiagram
               actions={Object.fromEntries(
                 MOUSE_BUTTONS.map(([key]) => {
-                  const bm = (profile.button_map ?? {}) as Record<
-                    string,
-                    unknown
-                  >;
-                  return [key, key in bm ? formatAction(bm[key]) : "Default"];
+                  return [
+                    key,
+                    key in buttonMap
+                      ? formatAction(buttonMap[key])
+                      : "Default",
+                  ];
                 }),
               )}
               assignable={ASSIGNABLE_ACTIONS}
               onAssign={setButtonAction}
               actionValueKey={actionValueKey}
+              macros={macrosByButton}
+              onSaveMacro={saveMacroForButton}
+              onDeleteMacro={deleteMacro}
+              macroVerify={macroVerify}
+              resetMacroVerify={resetMacroVerify}
+              macroFor={macroFor}
+              setMacroFor={setMacroFor}
             />
           </div>
-          <p className="text-center text-xs text-muted-foreground">
-            Click a mapping to remap that button — changes are written to the
-            mouse instantly.
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Click a mapping to remap a button. Choose "Macro..." to record a key
+            sequence for that button - changes are written to the mouse
+            instantly.
           </p>
-        </CardContent>
-      </Card>
-
-      {/* Macros — takes all remaining height */}
-      <Card className="flex min-h-0 flex-1 flex-col">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
-            Macros
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
-          <div className="flex w-full flex-col items-center justify-center rounded-md border border-dashed py-8 text-center">
-            <p className="text-sm text-muted-foreground">No macros yet</p>
-            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-              Macro recording and editing isn't available yet. Button clicks can
-              already be remapped above.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

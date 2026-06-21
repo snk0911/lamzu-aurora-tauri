@@ -239,7 +239,10 @@ mod real {
     pub fn write_profile(index: u8, profile: &Profile) -> Result<(), String> {
         with_lock(|| {
             let mouse = connect()?;
-            let lprofile = profile.to_lamzu();
+            // to_lamzu now returns Result: a macro/button-map that doesn't
+            // match lamzu's expected shape surfaces here instead of silently
+            // writing empty data (which caused macros to vanish on restart).
+            let lprofile = profile.to_lamzu()?;
             mouse
                 .set_profile((index.saturating_sub(1)) as usize, &lprofile)
                 .map_err(|e| format!("Write profile: {e}"))

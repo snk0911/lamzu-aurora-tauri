@@ -29,6 +29,10 @@ export default function App() {
     commit,
     setButtonAction,
     resetButtonMap,
+    saveMacroForButton,
+    macroVerify,
+    resetMacroVerify,
+    deleteMacro,
     resetGeneralSettings,
     setDpiAxis,
     activateMore,
@@ -51,7 +55,7 @@ export default function App() {
         <div className="flex items-center gap-2.5">
           <Logo className="size-8 text-foreground" />
           <span className="text-lg font-bold tracking-tight">
-            Lamzu Aurora Ultra
+            Lamzu Aurora Tauri
           </span>
         </div>
 
@@ -217,6 +221,10 @@ export default function App() {
             <CustomizationTab
               profile={profile}
               setButtonAction={setButtonAction}
+              saveMacroForButton={saveMacroForButton}
+              macroVerify={macroVerify}
+              resetMacroVerify={resetMacroVerify}
+              deleteMacro={deleteMacro}
             />
           )}
           </div>

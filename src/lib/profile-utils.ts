@@ -48,5 +48,28 @@ export function sameProfile(
     if (!cb || ca.red !== cb.red || ca.green !== cb.green || ca.blue !== cb.blue)
       return false;
   }
+  // Button map and macros must match too. Without this, the background poll
+  // could read a profile that differs only in its macros/mappings and either
+  // ignore a real external change or, worse, overwrite freshly-saved macros
+  // with a stale read. Compare them as JSON (order-independent enough for our
+  // small maps; a key/value difference always changes the serialized string).
+  if (!sameJson(fresh.button_map, shown.button_map)) return false;
+  if (!sameJson(fresh.macros, shown.macros)) return false;
   return true;
+}
+
+// Stable-ish JSON equality for the small button_map / macros objects. Sorts
+// keys so property order doesn't cause false negatives.
+function sameJson(a: unknown, b: unknown): boolean {
+  return stableStringify(a) === stableStringify(b);
+}
+
+function stableStringify(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
+  const obj = v as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  return `{${keys
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`)
+    .join(",")}}`;
 }
