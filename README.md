@@ -1,142 +1,66 @@
-# Lamzu Aurora (Tauri + React)
+# Lamzu Aurora Tauri
 
-A native, **cross-platform** desktop GUI for configuring Lamzu mice — built
-with **Tauri 2** (Rust) and **React**, **without Electron**, using **pnpm** as
-the package manager.
+A native, cross-platform desktop app for configuring Lamzu mice — built with
+**Tauri 2** (Rust) and **React**, no Electron. Instead of wrapping the Lamzu
+website, it talks to the mouse directly over **hidapi**, so it runs on Linux,
+Windows, and macOS.
 
-Instead of loading the Lamzu website (like the Electron wrapper), this app talks
-to the mouse directly via **hidapi** — which runs on **Linux, Windows and
-macOS**. The reverse-engineered protocol comes from
-[LeadSun/lamzu-cfg](https://github.com/LeadSun/lamzu-cfg).
+> ⚠️ Unofficial community project. The protocol is reverse-engineered from
+> [LeadSun/lamzu-cfg](https://github.com/LeadSun/lamzu-cfg). Back up your mouse
+> profile before writing, and use at your own risk.
 
-> ⚠️ Unofficial community project. Protocol via reverse engineering.
-> Back up your mouse profile before writing.
+## Features
 
----
+- **Profiles** — switch between profiles 1–4 and set the active one.
+- **Performance** — polling rate (capped to the model's max), debounce,
+  lift-off distance, Motion Sync, Angle Snapping, Ripple Control,
+  Peak/High Performance.
+- **DPI** — up to 5 stages, independent X/Y (50–26000), per-stage color and
+  lock, click to select the active stage.
+- **Button mapping** — remap any button from an interactive mouse diagram;
+  changes write to the mouse instantly.
+- **Macros** — record a key sequence for a button with configurable timing
+  (record actual delays, no delay, or a fixed delay) and repeat modes.
 
-## UI features
+## Getting started
 
-- Device bar at the top: model, connection (wired/wireless), battery level,
-  max polling rate, USB product ID and serial number.
-- Switch profiles 1–4 and set one as active.
-- Performance: polling rate (capped to the model's max rate), debounce,
-  lift-off distance.
-- Options: Motion Sync, Angle Snapping, Ripple Control, Peak/High Performance.
-- DPI stages: 1–5 stages, freely editable values (50–26000, independent X/Y),
-  active stage selectable by click, color swatch per stage.
-
-## Frontend stack
-
-The frontend is **TypeScript + React + Vite** with **Tailwind CSS v4** and
-**shadcn/ui**. shadcn is not a package; it copies components as source code into
-`src/components/ui/` — so they already live in the project and are freely
-editable. Add more components with:
+Requires [Node.js](https://nodejs.org) + [pnpm](https://pnpm.io) and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain
+and your platform's system dependencies).
 
 ```bash
-pnpm dlx shadcn@latest add dialog tooltip slider
+pnpm install      # install dependencies
+pnpm tauri dev    # run the app in development
+pnpm tauri build  # build a release binary
 ```
 
-The design tokens (colors, radii) live in `src/index.css`. The theme is a dark
-"instrument panel" with a cyan accent instead of the default presets.
+On Windows, build from a short path (e.g. `C:\dev\`) to avoid long-path issues.
 
-## How the mouse is addressed
+## Architecture
 
-The app embeds **lamzu-cfg directly as a library** (the crate is internally
-named `lamzu`). It exports a clean `Mouse` trait API and uses `hidapi` itself,
-so it runs wherever hidapi runs (Linux, Windows, macOS). The complete
-reverse-engineered protocol lives in the crate — `device.rs` only connects its
-methods with the frontend profile. **There are no protocol placeholders left.**
-
----
-
-## Prerequisites
-
-- **pnpm** 9+  (`npm install -g pnpm` or `corepack enable`)
-- **Rust** (stable) + Cargo — https://rustup.rs
-- **Linux**: Tauri and hidapi system packages:
-  ```bash
-  sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
-    libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-    libudev-dev pkg-config
-  ```
-- **Windows**: Visual Studio Build Tools + WebView2 (usually preinstalled)
-- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
-
----
-
-## Quick start (with mock data, no mouse)
-
-```bash
-pnpm install
-pnpm tauri dev --no-default-features
+```
+src/                 React frontend (TypeScript, Vite, Tailwind v4, shadcn/ui)
+  app/               app shell
+  features/          general-settings, customization (feature modules)
+  hooks/             use-device — device state and all command handlers
+  lib/               API, helpers, constants
+src-tauri/src/       Rust backend
+  commands.rs        Tauri commands exposed to the frontend
+  device.rs          HID communication (the only file touching the device)
+  profile.rs         frontend <-> lamzu profile conversion
 ```
 
-Shows sample profiles in memory. For UI development only.
+The React UI calls Tauri commands, which drive a single HID layer built on the
+`lamzu` crate. The dark "instrument panel" theme and design tokens live in
+`src/index.css`.
 
-## With real hardware
+## Supported hardware
 
-```bash
-pnpm tauri dev
-```
+Built and tested against the Lamzu Atlantis / Thorn (vendor ID `0x3554`). Other
+Lamzu models using the same protocol may work but are untested.
 
----
+## License
 
-## ⚙️ What you still need to keep in mind
-
-### 1. Supported models
-
-lamzu-cfg was developed/tested with the **Lamzu Atlantis** (Mini Pro).
-Devices are detected via their USB product ID: Atlantis Wired (`f50f`),
-Wireless 1K (`f50d`), Wireless 4K (`f510`). Other Lamzu models may work but
-are untested — in that case add the IDs in `device.rs` / the udev rule and
-test at your own risk.
-
-### 2. `packaging/99-lamzu.rules` — Linux only
-
-So the app can access `/dev/hidraw` without root. Enter the USB IDs, then:
-```bash
-sudo cp packaging/99-lamzu.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules && sudo udevadm trigger
-```
-Not needed on Windows/macOS.
-
----
-
-## Builds
-
-```bash
-# current platform
-pnpm tauri build
-
-# macOS: a single universal binary (Intel + Apple Silicon combined)
-rustup target add aarch64-apple-darwin x86_64-apple-darwin
-pnpm tauri build --target universal-apple-darwin
-
-# Windows / Linux are each built on the respective platform (or via CI)
-```
-
-"Universal" has two meanings, both satisfied:
-- **Cross-platform** (Linux/Win/macOS) via hidapi
-- **macOS universal binary** (Intel+ARM) via `--target universal-apple-darwin`
-
-Real cross-platform builds are best done in CI (e.g. GitHub Actions with one
-Linux, one Windows and one macOS runner), since Tauri builds each target on the
-respective OS.
-
----
-
-## Icons
-
-App icons (`.png`, `.ico`, `.icns`) are included in `src-tauri/icons/`. To
-replace them with your own logo:
-```bash
-pnpm tauri icon path/to/logo-1024.png
-```
-This regenerates all sizes automatically.
-
----
-
-## License & credits
-
-Protocol knowledge from [LeadSun/lamzu-cfg](https://github.com/LeadSun/lamzu-cfg)
-(MIT OR Apache-2.0). When reusing code, keep its license and copyright notices.
+Dual-licensed under MIT or Apache-2.0, matching the upstream `lamzu-cfg`
+project. Lamzu is a trademark of its respective owner; this project is not
+affiliated with or endorsed by Lamzu.
