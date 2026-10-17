@@ -5,7 +5,7 @@ A native, cross-platform desktop app for configuring Lamzu mice — built with
 website, it talks to the mouse directly over **hidapi**, so it runs on Linux,
 Windows, and macOS.
 
-> [!CAUTION]
+> [!WARNING]
 > **Unofficial community project**
 >
 > This project uses a reverse-engineered protocol based on
