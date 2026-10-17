@@ -5,10 +5,14 @@ A native, cross-platform desktop app for configuring Lamzu mice — built with
 website, it talks to the mouse directly over **hidapi**, so it runs on Linux,
 Windows, and macOS.
 
-> ⚠️<br>
-> Unofficial community project. The protocol is reverse-engineered from
+> [!CAUTION]
+> **Unofficial community project**
+>
+> This project uses a reverse-engineered protocol based on
 > [LeadSun/lamzu-cfg](https://github.com/LeadSun/lamzu-cfg).
-> Back up your mouse profile before writing, and use at your own risk.
+>
+> **Back up your mouse profile before making changes.**
+> Use at your own risk.
 
 ## Features
 
