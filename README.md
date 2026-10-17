@@ -4,11 +4,10 @@ A native, cross-platform desktop app for configuring Lamzu mice — built with
 **Tauri 2** (Rust) and **React**, no Electron. Instead of wrapping the Lamzu
 website, it talks to the mouse directly over **hidapi**, so it runs on Linux,
 Windows, and macOS.
-
-> ⚠️ 
+ 
 > Unofficial community project. The protocol is reverse-engineered from
 > [LeadSun/lamzu-cfg](https://github.com/LeadSun/lamzu-cfg). Back up your mouse
-> profile before writing, and use at your own risk.
+> profile before writing, and use at your own risk⚠️
 
 ## Features
 
