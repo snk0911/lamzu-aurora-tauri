@@ -1,0 +1,42 @@
+# Maintainer: snk0911
+pkgname=lamzu-aurora-tauri
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Unofficial GUI for configuring Lamzu mice (Tauri 2)'
+arch=('x86_64')
+url='https://github.com/snk0911/lamzu-aurora-tauri'
+license=('MIT' 'Apache-2.0')
+depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3' 'librsvg' 'openssl' 'systemd-libs' 'hicolor-icon-theme')
+makedepends=('git' 'nodejs' 'corepack' 'rust' 'cargo' 'pkgconf' 'file')
+source=("${pkgname}::git+${url}.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$srcdir/$pkgname"
+  corepack pnpm install --frozen-lockfile
+}
+
+build() {
+  cd "$srcdir/$pkgname"
+  corepack pnpm tauri build --no-bundle
+}
+
+package() {
+  cd "$srcdir/$pkgname"
+  install -Dm755 "src-tauri/target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+  install -Dm644 'src-tauri/icons/128x128.png' "$pkgdir/usr/share/icons/hicolor/128x128/apps/lamzu-aurora.png"
+  install -Dm644 'packaging/99-lamzu.rules' "$pkgdir/usr/lib/udev/rules.d/99-lamzu.rules"
+  install -Dm644 LICENSE-MIT "$pkgdir/usr/share/licenses/$pkgname/LICENSE-MIT"
+  install -Dm644 LICENSE-APACHE "$pkgdir/usr/share/licenses/$pkgname/LICENSE-APACHE"
+  install -dm755 "$pkgdir/usr/share/applications"
+  cat > "$pkgdir/usr/share/applications/lamzu-aurora.desktop" <<'DESKTOP'
+[Desktop Entry]
+Name=Lamzu Aurora
+Comment=Configure Lamzu mice
+Exec=lamzu-aurora-tauri
+Icon=lamzu-aurora
+Terminal=false
+Type=Application
+Categories=Settings;Utility;
+DESKTOP
+}

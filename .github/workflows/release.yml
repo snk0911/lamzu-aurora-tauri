@@ -1,0 +1,156 @@
+name: Publish
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check version matches tag
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package_version="$(node -p 'require("./package.json").version')"
+          tauri_version="$(node -p 'require("./src-tauri/tauri.conf.json").version')"
+          cargo_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -1)"
+          test "$version" = "$package_version"
+          test "$version" = "$tauri_version"
+          test "$version" = "$cargo_version"
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Lamzu Aurora ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+
+  desktop:
+    needs: prepare-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            args: '--bundles deb,appimage'
+          - os: windows-latest
+            args: '--bundles nsis'
+          - os: macos-latest
+            args: '--target aarch64-apple-darwin --bundles dmg'
+          - os: macos-latest
+            args: '--target x86_64-apple-darwin --bundles dmg'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev \
+            libssl-dev libudev-dev libxdo-dev pkg-config patchelf
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - run: pnpm install --frozen-lockfile
+      - name: Build and upload
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: '-'
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Lamzu Aurora ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  arch:
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install Arch dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm git nodejs corepack \
+            rust cargo pkgconf file webkit2gtk-4.1 gtk3 \
+            libappindicator-gtk3 librsvg openssl systemd-libs \
+            hicolor-icon-theme
+      - uses: actions/checkout@v7
+      - name: Build pacman package
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          sed -i "s/^pkgver=.*/pkgver=$version/" packaging/arch/PKGBUILD
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -c \
+            'cd "$1" && makepkg --noconfirm --clean' _ \
+            "$GITHUB_WORKSPACE/packaging/arch"
+      - name: Upload Arch package
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: packaging/arch/*.pkg.tar.zst
+          fail_on_unmatched_files: true
+
+  publish:
+    needs: [desktop, arch]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish when all builds succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --repo "$GITHUB_REPOSITORY"
+
+  update-aur:
+    needs: publish
+    if: vars.PUBLISH_AUR == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure AUR SSH key
+        shell: bash
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          test -n "$AUR_SSH_KEY"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$AUR_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan -H aur.archlinux.org >> "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+      - name: Update AUR PKGBUILD and SRCINFO
+        shell: bash
+        run: |
+          git clone ssh://aur@aur.archlinux.org/lamzu-aurora-tauri.git /tmp/lamzu-aur
+          cp packaging/arch/PKGBUILD /tmp/lamzu-aur/PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" /tmp/lamzu-aur/PKGBUILD
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v /tmp/lamzu-aur:/work -w /work \
+            archlinux:base-devel \
+            makepkg --printsrcinfo > /tmp/lamzu-aur/.SRCINFO
+          cd /tmp/lamzu-aur
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add PKGBUILD .SRCINFO
+          if ! git diff --cached --quiet; then
+            git commit -m "Update to ${GITHUB_REF_NAME}"
+            git push
+          fi
