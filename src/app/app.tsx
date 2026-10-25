@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/logo";
+import { Logo } from "@/components/Logo";
+import { Stat } from "@/components/Stat";
 import { WindowControls } from "@/components/window-controls";
 import { GeneralSettings } from "@/features/general-settings";
 import { CustomizationTab } from "@/features/customization";
 import { RotateCcw } from "lucide-react";
-import { Stat } from "@/components/stat";
 import { useDevice } from "@/hooks/use-device";
 
 export default function App() {

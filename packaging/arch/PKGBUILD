@@ -7,18 +7,34 @@ arch=('x86_64')
 url='https://github.com/snk0911/lamzu-aurora-tauri'
 license=('MIT' 'Apache-2.0')
 depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator-gtk3' 'librsvg' 'openssl' 'systemd-libs' 'hicolor-icon-theme')
-makedepends=('git' 'nodejs' 'corepack' 'rust' 'cargo' 'pkgconf' 'file')
+makedepends=(
+  'git'
+  'nodejs'
+  'pnpm'
+  'rust'
+  'cargo'
+  'pkgconf'
+  'file'
+)
 source=("${pkgname}::git+${url}.git#tag=v${pkgver}")
 sha256sums=('SKIP')
 
 prepare() {
   cd "$srcdir/$pkgname"
-  corepack pnpm install --frozen-lockfile
+  pnpm install --frozen-lockfile
 }
 
 build() {
   cd "$srcdir/$pkgname"
-  corepack pnpm tauri build --no-bundle
+
+  # React-Frontend kompilieren
+  pnpm build
+
+  # Vollständige native Rust-/Tauri-Anwendung bauen
+  cargo build \
+    --release \
+    --locked \
+    --manifest-path src-tauri/Cargo.toml
 }
 
 package() {
