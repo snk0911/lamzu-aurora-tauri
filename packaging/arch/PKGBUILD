@@ -43,7 +43,7 @@ package() {
   cd "$srcdir/$pkgname"
   install -Dm755 "src-tauri/target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
   install -Dm644 'src-tauri/icons/128x128.png' "$pkgdir/usr/share/icons/hicolor/128x128/apps/lamzu-aurora.png"
-  install -Dm644 'packaging/99-lamzu.rules' "$pkgdir/usr/lib/udev/rules.d/99-lamzu.rules"
+  install -Dm644 'packaging/70-lamzu.rules' "$pkgdir/usr/lib/udev/rules.d/70-lamzu.rules"
   install -Dm644 LICENSE-MIT "$pkgdir/usr/share/licenses/$pkgname/LICENSE-MIT"
   install -Dm644 LICENSE-APACHE "$pkgdir/usr/share/licenses/$pkgname/LICENSE-APACHE"
   install -dm755 "$pkgdir/usr/share/applications"
