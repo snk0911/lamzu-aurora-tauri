@@ -9,7 +9,7 @@
 # Different model? Find the IDs with `lsusb` and add them below.
 #
 # Installation:
-#   sudo cp 99-lamzu.rules /etc/udev/rules.d/
+#   sudo cp 70-lamzu.rules /etc/udev/rules.d/
 #   sudo udevadm control --reload-rules && sudo udevadm trigger
 #   Unplug and replug the mouse.
 #
@@ -19,5 +19,3 @@ KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct
 KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f50d", TAG+="uaccess"
 KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f510", TAG+="uaccess"
 
-# Fallback: all devices of this vendor (commented out).
-# KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", TAG+="uaccess"
