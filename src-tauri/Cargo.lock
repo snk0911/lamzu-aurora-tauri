@@ -1820,7 +1820,7 @@ dependencies = [
 
 [[package]]
 name = "lamzu-aurora-tauri"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "lamzu",
  "serde",
