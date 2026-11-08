@@ -35,6 +35,7 @@ build() {
   cargo build \
     --release \
     --locked \
+    --features tauri/custom-protocol \
     --manifest-path src-tauri/Cargo.toml
 }
 
